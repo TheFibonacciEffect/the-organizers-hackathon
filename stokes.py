@@ -3,6 +3,7 @@ import firedrake_adjoint as fda
 import numpy as np
 from pyadjoint import stop_annotating, no_annotations
 from scipy.spatial import KDTree
+
 # import matplotlib.pyplot as plt
 from helpers import (
     alpha,
@@ -20,23 +21,18 @@ from pyMMAopt import ReducedInequality, MMASolver
 # 0.1 Mesh and scales
 Nx = 100
 Ny = 100
-Lx = 1.0 # non-dim
-Ly = 1.0 # non-dim
+Lx = 1.0  # non-dim
+Ly = 1.0  # non-dim
 
-applied_pressure = 10000 # Pa
-L = 0.001 # m
-U = 20.0 # m/s TODO: compute from pressure drop
 
 mesh = fd.RectangleMesh(Nx, Ny, Lx, Ly)
 
 # 0.2 Physical Data
 channel_thickness = 380e-6
 Ht = 0.5 * channel_thickness
-nondim_Ht = Ht / L
 
 substrate_thickness = 150e-6
 Hs = 0.5 * substrate_thickness
-nondim_Hs = Hs / L
 
 conductivity_fluid = 0.598
 conductivity_substrate = 149
@@ -44,8 +40,16 @@ viscosity_fluid = 1.004e-3
 capacity_fluid = 4180
 density_fluid = 998
 
+applied_pressure = 10000  # kg m^-1 s^-2
+L = 0.001  # m
+U = np.sqrt(applied_pressure / density_fluid)  # m/s
+print(U)
+
 Re = L * U * density_fluid / viscosity_fluid
 prandtl_number = fd.Constant(capacity_fluid * viscosity_fluid / conductivity_fluid)
+nondim_Ht = Ht / L
+nondim_Hs = Hs / L
+
 
 # 0.3 Optimisation Parameters
 STAGES = 20
@@ -222,8 +226,7 @@ heat_transfer_coeff = calculate_heat_transfer_effective(
 
 coupling_channel_to_bottom_layer = (
     heat_transfer_coeff
-    * 0.5
-    * channel_thickness
+    * Ht
     / fd.Constant(2.0 * nondim_Ht**2 * conductivity_fluid)
     * fd.Constant(nu / prandtl_number)
 )
@@ -232,10 +235,7 @@ coupling_channel_to_bottom_layer = (
 # 5.1.2 For the die Substrate Layer
 diffusion_die_substrate_coeff = fd.Constant(4.0 / 3.0)
 coupling_die_substrate_to_top_layer = (
-    heat_transfer_coeff
-    * 0.5
-    * substrate_thickness
-    / fd.Constant(2.0 * nondim_Hs**2 * conductivity_substrate)
+    heat_transfer_coeff * Hs / fd.Constant(2.0 * nondim_Hs**2 * conductivity_substrate)
 )
 
 
@@ -243,45 +243,40 @@ Z = fd.FunctionSpace(mesh, "CG", 1)
 T = Z * Z
 t_total = fd.Function(T, name="Temperature")
 tau_total = fd.TestFunction(T)
-channel_temperature, substrate_temperature = fd.split(t_total)
-tau, psi = fd.split(tau_total)
+t_channel, t_substrate = fd.split(t_total)
+tau_channel, tau_substrate = fd.split(tau_total)
 
 # 5.2 Thermal Form
 # 5.2.1 Heat Flux
-F_thermal = -power_map_f * psi * fd.dx
+F_thermal = -power_map_f * tau_substrate * fd.dx
 # 5.2.2 Die Substrate Layer
 # 5.2.2.1 Die Substrate layer diffusion
 F_thermal += (
     diffusion_die_substrate_coeff
-    * fd.inner(fd.grad(substrate_temperature), fd.grad(psi))
+    * fd.inner(fd.grad(t_substrate), fd.grad(tau_substrate))
     * fd.dx
 )
 
 # 5.2.2.2 Die Substrate layer coupling to Channel layer
 F_thermal += (
     coupling_die_substrate_to_top_layer
-    * (substrate_temperature - channel_temperature)
-    * psi
+    * (t_substrate - t_channel)
+    * tau_substrate
     * fd.dx
 )
 
 # 5.2.3 Channel Layer
 # 5.2.3.1 Channel Layer advection
-F_thermal += advection_coeff * fd.inner(u, fd.grad(channel_temperature)) * tau * fd.dx
+F_thermal += advection_coeff * fd.inner(u, fd.grad(t_channel)) * tau_channel * fd.dx
 
 # 5.2.3.2 Channel Layer diffusion
 F_thermal += (
-    diffusion_channel_coeff
-    * fd.inner(fd.grad(channel_temperature), fd.grad(tau))
-    * fd.dx
+    diffusion_channel_coeff * fd.inner(fd.grad(t_channel), fd.grad(tau_channel)) * fd.dx
 )
 
 # 5.2.3.3 Channel Layer coupling to Substrate layer
 F_thermal += (
-    -coupling_channel_to_bottom_layer
-    * (substrate_temperature - channel_temperature)
-    * tau
-    * fd.dx
+    -coupling_channel_to_bottom_layer * (t_substrate - t_channel) * tau_channel * fd.dx
 )
 
 # 5.3 Thermal Boundary Conditions
@@ -312,10 +307,12 @@ rhof_viz = fd.Function(RHOF)
 rhof_viz.rename("rhof")
 
 global_i = 0
+
+
 @no_annotations
 def output(x, y, z):
     global global_i
-    # TODO: save output to hdf5 file 
+    # TODO: save output to hdf5 file
     if global_i % 10 == 0:
         _u, _p = up_node.tape_value().split()
         up_viz.sub(0).assign(_u)
@@ -337,7 +334,6 @@ def output(x, y, z):
             rhof_viz,
         )
 
-
     global_i += 1
     return y
 
@@ -346,9 +342,7 @@ def output(x, y, z):
 with stop_annotating():
     p = fd.Function(R).interpolate(fd.Constant(p_value))
 
-J = cost_function_scale * fd.assemble(substrate_temperature**p * fd.dx) ** (
-    1.0 / p_value
-)
+J = cost_function_scale * fd.assemble(t_substrate**p * fd.dx) ** (1.0 / p_value)
 
 c = fda.Control(rho)
 Jhat = fda.ReducedFunctional(
