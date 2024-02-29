@@ -1,8 +1,10 @@
-# First step
-- download and install [Glaciercore](https://github.com/Corintis/glacierware)
-- download and install [pyMMAopt](https://github.com/LLNL/pyMMAopt) 
+# Installation
 
-# How to run the TO
+```bash
+pip install pyMMAopt
+```
+
+# Usage
 ```bash
 python stokes.py
 ```
