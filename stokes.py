@@ -314,9 +314,11 @@ fd.solve(F_thermal == 0, t_total, bcs=[bc1])
 
 # 6.1 Vizualisation callback
 if len(sys.argv) == 1:
+    os.makedirs("output", exist_ok=True)
     pvd_output_file = fd.File("output/output.pvd")
 else:    
-    pvd_output_file = fd.File(f"output_seed{int(sys.arg[1])}/output.pvd")
+    os.makedirs(f"output_seed{int(sys.argv[1])}", exist_ok=True)
+    pvd_output_file = fd.File(f"output_seed{int(sys.argv[1])}/output.pvd")
 
 t_total_node = fda.Control(t_total)
 t_total_viz = fd.Function(T)
