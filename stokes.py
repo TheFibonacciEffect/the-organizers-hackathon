@@ -63,8 +63,8 @@ print("Prandtl number: ", Prandtl_number)
 
 
 # 0.3 Optimisation Parameters
-STAGES = 20
-iter_per_stage = 5
+STAGES = 5
+iter_per_stage = 20
 total_iterations = STAGES * iter_per_stage
 
 ramp_p_fluid_values = np.linspace(300.0, 10.0, STAGES)
@@ -123,8 +123,8 @@ else:
     # random two rectangle of different shapes and positions
     np.random.seed(int(sys.argv[1]))
     
-    xl1 = np.random.randint(int(Nx / 20), int(Nx / 10))
-    yl1 = np.random.randint(int(Ny / 20), int(Ny / 10))
+    xl1 = np.random.randint(int(Nx / 10), int(Nx / 5))
+    yl1 = np.random.randint(int(Ny / 10), int(Ny / 5))
     
     xp1 = np.random.randint(int(Nx / 5), int(4 * Nx / 5))
     yp1 = np.random.randint(int(Ny / 5), int(4 * Ny / 5))
@@ -133,8 +133,8 @@ else:
         for j in range(yp1, yp1 + yl1):
             power_map_data[i, j] = 5e5
     
-    xl2 = np.random.randint(int(Nx / 20), int(Nx / 10))
-    yl2 = np.random.randint(int(Ny / 20), int(Ny / 10))
+    xl2 = np.random.randint(int(Nx / 10), int(Nx / 5))
+    yl2 = np.random.randint(int(Ny / 10), int(Ny / 5))
     
     xp2 = np.random.randint(int(Nx / 5), int(4 * Nx / 5))
     yp2 = np.random.randint(int(Ny / 5), int(4 * Ny / 5))
