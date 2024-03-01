@@ -64,7 +64,7 @@ print("Prandtl number: ", Prandtl_number)
 
 # 0.3 Optimisation Parameters
 STAGES = 20
-iter_per_stage = 20
+iter_per_stage = 5
 total_iterations = STAGES * iter_per_stage
 
 ramp_p_fluid_values = np.linspace(300.0, 10.0, STAGES)
@@ -313,7 +313,10 @@ fd.solve(F_thermal == 0, t_total, bcs=[bc1])
 # --- 6. MMA ---
 
 # 6.1 Vizualisation callback
-pvd_output_file = fd.File("output/output.pvd")
+if len(sys.argv) == 1:
+    pvd_output_file = fd.File("output/output.pvd")
+else:    
+    pvd_output_file = fd.File(f"output_seed{int(sys.arg[1])}/output.pvd")
 
 t_total_node = fda.Control(t_total)
 t_total_viz = fd.Function(T)
