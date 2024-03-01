@@ -1,3 +1,4 @@
+import os
 import sys
 import firedrake as fd
 import firedrake_adjoint as fda
@@ -120,7 +121,7 @@ if len(sys.argv) == 1:
         power_map_data[i, int(Ny / 2)] = 5e5
 else:
     # random two rectangle of different shapes and positions
-    np.random.seed(sys.argv[1])
+    np.random.seed(int(sys.argv[1]))
     
     xl1 = np.random.randint(int(Nx / 20), int(Nx / 10))
     yl1 = np.random.randint(int(Ny / 20), int(Ny / 10))
@@ -337,7 +338,6 @@ global_i = 0
 @no_annotations
 def output(x, y, z):
     global global_i
-    # TODO: save output to hdf5 file
     if global_i % pvd_frequency == 0:
         _u, _p = up_node.tape_value().split()
         up_viz.sub(0).assign(_u)
@@ -358,10 +358,13 @@ def output(x, y, z):
             rho_viz,
             rhof_viz,
         )
+    # TODO: save brinkman term in HDF5 file
     if global_i % hdf5_frequency == 0:
         assert len(sys.argv) == 2, "Please provide a seed for the random power map"
         
-        with fd.CheckpointFile(f"output_seed{sys.argv[1]}/results-{global_i}.h5", 'w') as save_file:
+        os.makedirs(f"output_seed{int(sys.argv[1])}", exist_ok=True)
+        
+        with fd.CheckpointFile(f"output_seed{int(sys.argv[1])}/results-{global_i}.h5", 'w') as save_file:
             save_file.save_mesh(mesh)  # optional
             save_file.save_function(rho_node.tape_value(), name="rho")
             save_file.save_function(rhof_node.tape_value(), name="rhof")
