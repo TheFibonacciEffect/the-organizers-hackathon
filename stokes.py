@@ -1,3 +1,4 @@
+import sys
 import firedrake as fd
 import firedrake_adjoint as fda
 import numpy as np
@@ -107,14 +108,40 @@ with stop_annotating():
 # with a cell size of (Lx/Nx, Ly/Ny)
 
 # TODO: generate the powermap in a random way, maybe use gaussian distribution for less sharp interfaces
-# random square moving around (one or two squares)
-power_map_data = np.zeros((Nx, Ny))
-for i in range(int(Nx / 3), int(4 * Nx / 5)):
-    power_map_data[i, int(2 * Ny / 5)] = 5e5
-    power_map_data[i, int(4 * Ny / 5)] = 5e5
 
-for i in range(int(Nx / 5), int(3 * Nx / 5)):
-    power_map_data[i, int(Ny / 2)] = 5e5
+power_map_data = np.zeros((Nx, Ny))
+
+if len(sys.argv) == 1:
+    for i in range(int(Nx / 3), int(4 * Nx / 5)):
+        power_map_data[i, int(2 * Ny / 5)] = 5e5
+        power_map_data[i, int(4 * Ny / 5)] = 5e5
+
+    for i in range(int(Nx / 5), int(3 * Nx / 5)):
+        power_map_data[i, int(Ny / 2)] = 5e5
+else:
+    # random two rectangle of different shapes and positions
+    np.random.seed(sys.argv[1])
+    
+    xl1 = np.random.randint(int(Nx / 20), int(Nx / 10))
+    yl1 = np.random.randint(int(Ny / 20), int(Ny / 10))
+    
+    xp1 = np.random.randint(int(Nx / 5), int(4 * Nx / 5))
+    yp1 = np.random.randint(int(Ny / 5), int(4 * Ny / 5))
+    
+    for i in range(xp1, xp1 + xl1):
+        for j in range(yp1, yp1 + yl1):
+            power_map_data[i, j] = 5e5
+    
+    xl2 = np.random.randint(int(Nx / 20), int(Nx / 10))
+    yl2 = np.random.randint(int(Ny / 20), int(Ny / 10))
+    
+    xp2 = np.random.randint(int(Nx / 5), int(4 * Nx / 5))
+    yp2 = np.random.randint(int(Ny / 5), int(4 * Ny / 5))
+    
+    for i in range(xp2, xp2 + xl2):
+        for j in range(yp2, yp2 + yl2):
+            power_map_data[i, j] = 5e5
+    
 
 POWER_MAP = fd.FunctionSpace(mesh, "DG", 0)
 power_map_f = fd.Function(POWER_MAP)
@@ -332,7 +359,9 @@ def output(x, y, z):
             rhof_viz,
         )
     if global_i % hdf5_frequency == 0:
-        with fd.CheckpointFile(f"output/results-{global_i}.h5", 'w') as save_file:
+        assert len(sys.argv) == 2, "Please provide a seed for the random power map"
+        
+        with fd.CheckpointFile(f"output_seed{sys.argv[1]}/results-{global_i}.h5", 'w') as save_file:
             save_file.save_mesh(mesh)  # optional
             save_file.save_function(rho_node.tape_value(), name="rho")
             save_file.save_function(rhof_node.tape_value(), name="rhof")
