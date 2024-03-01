@@ -18,7 +18,7 @@ from pyMMAopt import ReducedInequality, MMASolver
 
 
 pvd_frequency = 5
-hdf5_frequency = 5
+hdf5_frequency = 0
 
 # --- 0. Parameters Initialisation ---
 # 0.1 Mesh and scales
@@ -107,8 +107,6 @@ with stop_annotating():
 # --- 2.Power Map ---
 # The power map is a grid of any resolution, and will be projected on the rectangular mesh
 # with a cell size of (Lx/Nx, Ly/Ny)
-
-# TODO: generate the powermap in a random way, maybe use gaussian distribution for less sharp interfaces
 
 power_map_data = np.zeros((Nx, Ny))
 
@@ -363,8 +361,7 @@ def output(x, y, z):
             rho_viz,
             rhof_viz,
         )
-    # TODO: save brinkman term in HDF5 file
-    if global_i % hdf5_frequency == 0:
+    if hdf5_frequency > 0 and global_i % hdf5_frequency == 0:
         assert len(sys.argv) == 2, "Please provide a seed for the random power map"
         
         os.makedirs(f"output_seed{int(sys.argv[1])}", exist_ok=True)
